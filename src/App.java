@@ -3,7 +3,5 @@ public class App {
         FrmDibujo j=new FrmDibujo();
         j.setVisible(true);
         j.setLocationRelativeTo(null);
-
-
     }
 }
