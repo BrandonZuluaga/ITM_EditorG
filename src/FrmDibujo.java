@@ -1,13 +1,9 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.io.*;
 import javax.swing.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class FrmDibujo extends JFrame {
-
     Lista lista = new Lista();
     Nodo nodoSeleccionado = null;
     BufferedImage imagen;
@@ -20,7 +16,8 @@ public class FrmDibujo extends JFrame {
     private JButton btnCargar;
     private JToolBar tbDibujo;
     private JPanel panel;
-    int x, y;
+
+    int x, y, xTemp, yTemp; // Coordenadas de inicio y temporales
     boolean trazando = false;
 
     public FrmDibujo() {
@@ -32,7 +29,6 @@ public class FrmDibujo extends JFrame {
         btnCargar = new JButton();
 
         tbDibujo.add(ComboBox);
-
         setSize(700, 500);
         setTitle("Dibujos Vectoriales");
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -41,7 +37,25 @@ public class FrmDibujo extends JFrame {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                dibujarTrazos(g);
+                lista.dibujarTrazos(g, nodoSeleccionado);
+
+                // Dibujar trazo temporal si se está trazando
+                if (trazando) {
+                    g.setColor(Color.GRAY); // Color para el trazo temporal
+                    switch (opciones[ComboBox.getSelectedIndex()]) {
+                        case "Linea":
+                            g.drawLine(x, y, xTemp, yTemp);
+                            break;
+                        case "Rectangulo":
+                            g.drawRect(Math.min(x, xTemp), Math.min(y, yTemp),
+                                    Math.abs(xTemp - x), Math.abs(yTemp - y));
+                            break;
+                        case "Circulo":
+                            g.drawOval(Math.min(x, xTemp), Math.min(y, yTemp),
+                                    Math.abs(xTemp - x), Math.abs(yTemp - y));
+                            break;
+                    }
+                }
             }
         };
 
@@ -56,6 +70,8 @@ public class FrmDibujo extends JFrame {
             public void mousePressed(MouseEvent e) {
                 x = e.getX();
                 y = e.getY();
+                xTemp = x;
+                yTemp = y;
                 trazando = true;
             }
 
@@ -73,7 +89,20 @@ public class FrmDibujo extends JFrame {
 
             @Override
             public void mouseClicked(MouseEvent e) {
-                seleccionarTrazo(e.getX(), e.getY());
+                nodoSeleccionado = lista.seleccionarNodo(e.getX(), e.getY());
+                panel.repaint();
+            }
+        });
+
+        // 📌 **Nuevo Listener para actualizar las coordenadas temporales**
+        panel.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (trazando) {
+                    xTemp = e.getX();
+                    yTemp = e.getY();
+                    panel.repaint(); // Redibujar para mostrar el trazo temporal
+                }
             }
         });
 
@@ -98,19 +127,6 @@ public class FrmDibujo extends JFrame {
         imagen = new BufferedImage(700, 500, BufferedImage.TYPE_INT_ARGB);
     }
 
-    private void seleccionarTrazo(int x, int y) {
-        for (Nodo n : lista.getNodos()) {
-            if (x >= Math.min(n.x1, n.x2) && x <= Math.max(n.x1, n.x2) &&
-                    y >= Math.min(n.y1, n.y2) && y <= Math.max(n.y1, n.y2)) {
-                nodoSeleccionado = n;
-                panel.repaint();
-                return;
-            }
-        }
-        nodoSeleccionado = null;
-        panel.repaint();
-    }
-
     private void btnSeleccionarClick() {
         nodoSeleccionado = null;
         panel.repaint();
@@ -130,13 +146,7 @@ public class FrmDibujo extends JFrame {
             if (!rutaArchivo.endsWith(".dbj")) {
                 rutaArchivo += ".dbj"; // Asegurar extensión
             }
-
-            // Convertir la lista de nodos en un arreglo de Strings para guardarlo
-            String[] lineas = lista.getNodos().stream()
-                    .map(n -> n.tipoTrazo + ";" + n.x1 + ";" + n.y1 + ";" + n.x2 + ";" + n.y2)
-                    .toArray(String[]::new);
-
-            if (Archivo.guardarArchivo(rutaArchivo, lineas)) {
+            if (Archivo.guardarArchivo(rutaArchivo, lista.obtenerDatos())) {
                 JOptionPane.showMessageDialog(this, "Dibujo guardado exitosamente.");
             } else {
                 JOptionPane.showMessageDialog(this, "Error al guardar el archivo.");
@@ -147,47 +157,9 @@ public class FrmDibujo extends JFrame {
     private void btnCargarClick() {
         String rutaArchivo = Archivo.elegirArchivo();
         if (!rutaArchivo.isEmpty()) {
-            BufferedReader br = Archivo.abrirArchivo(rutaArchivo);
-            if (br != null) {
-                lista = new Lista(); // Reiniciar la lista de nodos
-                try {
-                    String linea;
-                    while ((linea = br.readLine()) != null) {
-                        String[] datos = linea.split(";");
-                        if (datos.length == 5) {
-                            lista.agregar(new Nodo(datos[0], Integer.parseInt(datos[1]), Integer.parseInt(datos[2]),
-                                    Integer.parseInt(datos[3]), Integer.parseInt(datos[4])));
-                        }
-                    }
-                    br.close();
-                    panel.repaint();
-                    JOptionPane.showMessageDialog(this, "Dibujo cargado exitosamente.");
-                } catch (IOException e) {
-                    JOptionPane.showMessageDialog(this, "Error al leer el archivo.");
-                }
-            } else {
-                JOptionPane.showMessageDialog(this, "No se pudo abrir el archivo.");
-            }
-        }
-    }
-
-
-    private void dibujarTrazos(Graphics g) {
-        for (Nodo n : lista.getNodos()) {
-            g.setColor(n == nodoSeleccionado ? Color.RED : Color.WHITE);
-            switch (n.tipoTrazo) {
-                case "Linea":
-                    g.drawLine(n.x1, n.y1, n.x2, n.y2);
-                    break;
-                case "Rectangulo":
-                    g.drawRect(Math.min(n.x1, n.x2), Math.min(n.y1, n.y2),
-                            Math.abs(n.x2 - n.x1), Math.abs(n.y2 - n.y1));
-                    break;
-                case "Circulo":
-                    g.drawOval(Math.min(n.x1, n.x2), Math.min(n.y1, n.y2),
-                            Math.abs(n.x2 - n.x1), Math.abs(n.y2 - n.y1));
-                    break;
-            }
+            lista.cargarDesdeArchivo(rutaArchivo);
+            panel.repaint();
+            JOptionPane.showMessageDialog(this, "Dibujo cargado exitosamente.");
         }
     }
 }

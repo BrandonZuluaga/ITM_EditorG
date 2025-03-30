@@ -1,162 +1,106 @@
-import java.util.List;
+import java.awt.*;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.ArrayList;
-
-
 
 public class Lista {
-    /*private Nodo cabeza;
-   
-private List<Nodo> nodos;
-   public Lista() {
-    nodos = new ArrayList<Nodo>();
-   }
-    
-    public void agregar(Nodo nodo){
-        nodos.add(nodo);
-    }
-    public void eliminarNodo(Nodo n) {
-        if (n != null && cabeza != null) {
-
-            Nodo antecesor = null;
-            Nodo apuntador = cabeza;
-            while (apuntador != null && apuntador != n) {
-                antecesor = apuntador;
-                apuntador = apuntador.siguiente;
-            }
-            if (apuntador != null) {
-                if (antecesor == null) {
-                    apuntador = apuntador.siguiente;
-
-                } else {
-                    antecesor.siguiente = apuntador.siguiente;
-                }
-
-            }
-        nodos.remove(n);
-        }
-    }
-
-    public List<Nodo> getNodos() {
-        return nodos;
-    }
-
-
-    /*public void agregar(Nodo trazo) {
-        if (trazo != null) {
-            if (cabeza == null) {
-                cabeza = trazo;
-            } else {
-                Nodo apuntador = cabeza;
-                while (apuntador.siguiente != null) {
-                    apuntador = apuntador.siguiente;
-
-                }
-                apuntador.siguiente = trazo;
-
-            }
-            trazo.siguiente = null;
-        }
-    }
-
-    public void mostrar() {
-        Nodo apuntador = cabeza;
-        int ind = 0;
-        while (apuntador != null) {
-            apuntador = apuntador.siguiente;
-            ind++;
-        }
-    }
-    public void eliminar(Nodo n) {
-        if (n != null && cabeza != null) {
-
-            Nodo antecesor = null;
-            Nodo apuntador = cabeza;
-            while (apuntador != null && apuntador != n) {
-                antecesor = apuntador;
-                apuntador = apuntador.siguiente;
-            }
-            if (apuntador != null) {
-                if (antecesor == null) {
-                    apuntador = apuntador.siguiente;
-
-                } else {
-                    antecesor.siguiente = apuntador.siguiente;
-                }
-
-            }
-
-        }
-    }
-    public void desdeArchivo(String nombreArchivo) {
-        cabeza = null;
-        BufferedReader br = Archivo.abrirArchivo(nombreArchivo);
-        if (br != null) {
-            try {
-                String linea = br.readLine();
-                while (linea != null) {
-                    String[] datos = linea.split(";");
-                    if (datos.length >= 5) {
-                        //Nodo n = new Nodo();
-                       // seleccionar(n);
-                    }
-                    linea = br.readLine();
-                }
-
-            } catch (IOException ex) {
-
-            } catch (Exception ex) {
-
-            }
-        }
-    }*/
     private Nodo cabeza;
 
-    public Lista() {
-        cabeza = null; // Inicialmente, la lista está vacía
-    }
-
-    public void agregar(Nodo nodo) {
+    public void agregar(Nodo nuevoNodo) {
         if (cabeza == null) {
-            cabeza = nodo; // Si la lista está vacía, el nuevo nodo es la cabeza
+            cabeza = nuevoNodo;
         } else {
             Nodo actual = cabeza;
             while (actual.siguiente != null) {
-                actual = actual.siguiente; // Avanzar al último nodo
+                actual = actual.siguiente;
             }
-            actual.siguiente = nodo; // Enlazar el nuevo nodo al final de la lista
+            actual.siguiente = nuevoNodo;
         }
     }
 
-    public Nodo getCabeza() {
-        return cabeza; // Método para obtener la cabeza de la lista
+    public void eliminarNodo(Nodo nodoAEliminar) {
+        if (cabeza == null) return;
+
+        if (cabeza == nodoAEliminar) {
+            cabeza = cabeza.siguiente;
+            return;
+        }
+
+        Nodo actual = cabeza;
+        while (actual.siguiente != null) {
+            if (actual.siguiente == nodoAEliminar) {
+                actual.siguiente = actual.siguiente.siguiente;
+                return;
+            }
+            actual = actual.siguiente;
+        }
     }
 
-    public List<Nodo> getNodos() {
-        List<Nodo> nodos = new ArrayList<>();
+    public Nodo seleccionarNodo(int x, int y) {
         Nodo actual = cabeza;
         while (actual != null) {
-            nodos.add(actual);
-            actual = actual.siguiente; // Avanzar al siguiente nodo
+            if (x >= Math.min(actual.x1, actual.x2) && x <= Math.max(actual.x1, actual.x2) &&
+                    y >= Math.min(actual.y1, actual.y2) && y <= Math.max(actual.y1, actual.y2)) {
+                return actual;
+            }
+            actual = actual.siguiente;
         }
-        return nodos;
+        return null;
     }
 
-    public void eliminarNodo(Nodo n) {
-        if (n != null && cabeza != null) {
-            if (cabeza == n) {
-                cabeza = cabeza.siguiente; // Si el nodo a eliminar es la cabeza
-            } else {
-                Nodo actual = cabeza;
-                while (actual.siguiente != null && actual.siguiente != n) {
-                    actual = actual.siguiente; // Buscar el nodo anterior
+    public void dibujarTrazos(Graphics g, Nodo nodoSeleccionado) {
+        Nodo actual = cabeza;
+        while (actual != null) {
+            g.setColor(actual == nodoSeleccionado ? Color.RED : Color.WHITE);
+            switch (actual.tipoTrazo) {
+                case "Linea" -> g.drawLine(actual.x1, actual.y1, actual.x2, actual.y2);
+                case "Rectangulo" -> g.drawRect(Math.min(actual.x1, actual.x2), Math.min(actual.y1, actual.y2),
+                        Math.abs(actual.x2 - actual.x1), Math.abs(actual.y2 - actual.y1));
+                case "Circulo" -> g.drawOval(Math.min(actual.x1, actual.x2), Math.min(actual.y1, actual.y2),
+                        Math.abs(actual.x2 - actual.x1), Math.abs(actual.y2 - actual.y1));
+            }
+            actual = actual.siguiente;
+        }
+    }
+
+    public String[] obtenerDatos() {
+        int tamaño = contarNodos();
+        String[] datos = new String[tamaño];
+        Nodo actual = cabeza;
+        int i = 0;
+        while (actual != null) {
+            datos[i++] = actual.tipoTrazo + ";" + actual.x1 + ";" + actual.y1 + ";" + actual.x2 + ";" + actual.y2;
+            actual = actual.siguiente;
+        }
+        return datos;
+    }
+
+    public void cargarDesdeArchivo(String ruta) {
+        cabeza = null;
+        BufferedReader br = Archivo.abrirArchivo(ruta);
+        if (br != null) {
+            try {
+                String linea;
+                while ((linea = br.readLine()) != null) {
+                    String[] datos = linea.split(";");
+                    if (datos.length == 5) {
+                        agregar(new Nodo(datos[0], Integer.parseInt(datos[1]), Integer.parseInt(datos[2]),
+                                Integer.parseInt(datos[3]), Integer.parseInt(datos[4])));
+                    }
                 }
-                if (actual.siguiente == n) {
-                    actual.siguiente = n.siguiente; // Enlazar el nodo anterior al siguiente del nodo a eliminar
-                }
+                br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
-}
 
+    private int contarNodos() {
+        int contador = 0;
+        Nodo actual = cabeza;
+        while (actual != null) {
+            contador++;
+            actual = actual.siguiente;
+        }
+        return contador;
+    }
+}
